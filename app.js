@@ -110,7 +110,7 @@ function initMobileMenu() {
   function headerHas(el) { return el && (el.closest && (el.closest('header'))); }
   const mq = window.matchMedia('(max-width: 760px)');
   function place() {
-    ['curSel', 'themeToggle', 'cartBtn'].forEach(id => {
+    ['curSel', 'themeToggle'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
       (mq.matches && dest ? dest : hbtns).appendChild(el);
