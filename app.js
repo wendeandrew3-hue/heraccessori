@@ -93,5 +93,33 @@ function toast(msg) {
   setTimeout(() => t.remove(), 2200);
 }
 
+/* ---------- mobile dropdown menu ---------- */
+function initMobileMenu() {
+  const btn = document.getElementById('menuBtn');
+  const panel = document.getElementById('menuPanel');
+  if (!btn || !panel) return;
+  const hbtns = document.querySelector('.hbtns');
+  const dest = panel.querySelector('.menu-controls');
+  btn.onclick = () => {
+    const open = panel.classList.toggle('open');
+    btn.textContent = open ? '✕' : '☰';
+  };
+  document.addEventListener('click', e => {
+    if (panel.classList.contains('open') && !headerHas(e.target)) { panel.classList.remove('open'); btn.textContent = '☰'; }
+  });
+  function headerHas(el) { return el && (el.closest && (el.closest('header'))); }
+  const mq = window.matchMedia('(max-width: 760px)');
+  function place() {
+    ['curSel', 'themeToggle', 'cartBtn'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      (mq.matches && dest ? dest : hbtns).appendChild(el);
+    });
+    panel.classList.remove('open'); btn.textContent = '☰';
+  }
+  mq.addEventListener ? mq.addEventListener('change', place) : mq.addListener(place);
+  place();
+}
+
 /* ---------- boot ---------- */
-document.addEventListener('DOMContentLoaded', () => { initTheme(); initCurrency(); initHeader(); });
+document.addEventListener('DOMContentLoaded', () => { initTheme(); initCurrency(); initHeader(); initMobileMenu(); });

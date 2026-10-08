@@ -42,13 +42,13 @@ button { font-family: inherit; cursor: pointer; }
 /* ---------- header: logo top-left, nav, currency, profile + cart top-right ---------- */
 header {
   position: sticky; top: 0; z-index: 50;
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: blur(10px);
+  background: var(--bg);
   border-bottom: 1px solid var(--line);
 }
 .hbar {
   max-width: 1200px; margin: 0 auto; padding: 12px 20px;
   display: flex; align-items: center; gap: 14px;
+  justify-content: space-between;
 }
 .profile-btn {
   width: 42px; height: 42px; border-radius: 50%;
@@ -64,6 +64,20 @@ header {
 nav.main { margin-left: auto; display: flex; gap: 22px; font-size: 15px; color: var(--muted); }
 nav.main a:hover { color: var(--accent); }
 .hbtns { display: flex; align-items: center; gap: 10px; }
+.menu-btn {
+  display: none; width: 36px; height: 36px; border-radius: 10px;
+  border: 1.5px solid var(--lav); background: var(--lav-mist);
+  align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0;
+}
+.menu-panel {
+  display: none; position: absolute; top: 100%; left: 0; right: 0;
+  background: var(--bg); border-bottom: 1px solid var(--line);
+  padding: 6px 20px 18px; box-shadow: 0 22px 34px rgba(0,0,0,.14);
+}
+.menu-panel.open { display: block; }
+.menu-panel nav a { display: block; padding: 12px 0; font-size: 16px; color: var(--text); border-bottom: 1px solid var(--line); }
+.menu-panel nav a:last-child { border-bottom: none; }
+.menu-controls { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 .currency-select, .theme-toggle, .cart-btn {
   border: 1px solid var(--line); background: var(--surface); color: var(--text);
   border-radius: 999px; padding: 8px 14px; font-size: 14px;
@@ -212,6 +226,19 @@ footer { border-top: 1px solid var(--line); background: var(--lav-mist); margin-
 
 @media (max-width: 760px) {
   nav.main { display: none; }
-  .brand { font-size: 22px; }
+  .menu-btn { display: flex; }
+  .hbtns > .currency-select, .hbtns > .theme-toggle, .hbtns > .cart-btn { display: none; }
+  .brand { font-size: 20px; }
+  .logo-img { width: 32px; height: 32px; border-radius: 8px; margin-right: 7px; }
+  .hbar { padding: 10px 12px; gap: 8px; }
+  .hbtns { gap: 6px; }
+  .profile-btn { width: 36px; height: 36px; font-size: 16px; }
+  .currency-select, .theme-toggle { padding: 7px 10px; font-size: 13px; }
+  .cart-btn { padding: 7px 11px; font-size: 13px; }
   .hero { min-height: 66vh; }
+}
+@media (max-width: 420px) {
+  .hbar { gap: 6px; }
+  .hbtns { gap: 5px; }
+  .theme-toggle { padding: 7px 8px; }
 }
