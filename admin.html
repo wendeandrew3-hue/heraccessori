@@ -25,7 +25,7 @@
 <body>
 <header>
   <div class="hbar">
-    <a href="index.html" class="brand">Her <span class="dot">Accessori</span> <span style="font-size:13px;color:var(--muted)">· admin</span></a>
+    <a href="index.html" class="brand"><img class="logo-img" src="https://media.base44.com/images/public/6abb9d8658ca4f3d10f85c7a/0ff64a871_generated_image.png" alt="logo">Her <span class="dot">Accessori</span> <span style="font-size:13px;color:var(--muted)">· admin</span></a>
     <nav class="main"></nav>
     <div class="hbtns">
       <select class="currency-select" id="curSel"></select>
@@ -49,6 +49,7 @@
     <div class="stat"><div class="n" id="statProds">0</div><div style="font-size:13px;color:var(--muted)">Products</div></div>
     <div class="stat"><div class="n" id="statOrders">0</div><div style="font-size:13px;color:var(--muted)">Orders</div></div>
     <div class="stat"><div class="n" id="statPending">0</div><div style="font-size:13px;color:var(--muted)">Pending dispatch</div></div>
+    <div class="stat"><div class="n" id="statRevPending">0</div><div style="font-size:13px;color:var(--muted)">Reviews to verify</div></div>
   </div>
 
   <div class="admin-grid">
@@ -85,6 +86,11 @@
         <h3>Orders</h3>
         <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Set status to <strong>Dispatched</strong> to release the customer's invoice.</p>
         <table class="order-table" id="orderTable"><thead><tr><th>Ref</th><th>Customer</th><th>Items</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="mini-card">
+        <h3>Reviews</h3>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:10px">New client reviews arrive as <strong>pending</strong>. Verify them to make them live on the Reviews page, or reject them.</p>
+        <table class="order-table" id="revTable"><thead><tr><th>Name</th><th>Rating</th><th>Review</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
       </div>
     </div>
   </div>
@@ -160,7 +166,35 @@ document.getElementById('saveProd').onclick = async () => {
 async function load() {
   const j = await api({ action: 'listAll' });
   if (j.ok) render(j);
+  loadReviews();
 }
+
+async function loadReviews() {
+  const r = await fetch(API + '/herReviews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'listAll', password: PASSWORD }) });
+  const j = await r.json();
+  if (!j.ok) return;
+  const revs = j.reviews || [];
+  const pend = revs.filter(v => v.status === 'pending');
+  document.getElementById('statRevPending').textContent = pend.length;
+  document.querySelector('#revTable tbody').innerHTML = revs.map(v => {
+    const stars = '★'.repeat(v.rating) + '☆'.repeat(5 - v.rating);
+    const actions = v.status === 'pending'
+      ? `<button class="small-btn" onclick="revAction('${v.id}','approve')">Verify → publish</button> <button class="small-btn warn" onclick="revAction('${v.id}','reject')">Reject</button>`
+      : `<button class="small-btn warn" onclick="revAction('${v.id}','delete')">Remove</button>`;
+    return `<tr>
+      <td>${v.name}<br><span style="font-size:12px;color:var(--muted)">${new Date(v.created_date).toLocaleDateString()}</span></td>
+      <td><span style="color:#c9a227">${stars}</span></td>
+      <td style="max-width:340px">${v.comment}</td>
+      <td><span class="status-pill">${v.status}</span></td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" style="color:var(--muted)">No reviews yet. Client reviews will appear here for verification.</td></tr>';
+}
+
+window.revAction = async (id, act) => {
+  await fetch(API + '/herReviews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: act, id, password: PASSWORD }) });
+  loadReviews();
+};
 
 function render(j) {
   document.getElementById('statProds').textContent = j.products.length;

@@ -10,13 +10,17 @@
 <body>
 <header>
   <div class="hbar">
-    <button class="profile-btn" id="profileBtn">👤</button>
-    <a href="index.html" class="brand">Her <span class="dot">Accessori</span></a>
-    <nav class="main"></nav>
+    <a href="index.html" class="brand"><img class="logo-img" src="https://media.base44.com/images/public/6abb9d8658ca4f3d10f85c7a/0ff64a871_generated_image.png" alt="Her Accessori logo">Her <span class="dot">Accessori</span></a>
+    <nav class="main">
+      <a href="index.html">Boutique</a>
+      <a href="about.html">About</a>
+      <a href="reviews.html">Reviews</a>
+    </nav>
     <div class="hbtns">
-      <select class="currency-select" id="curSel"></select>
-      <button class="theme-toggle" id="themeToggle">🌙</button>
-      <a class="cart-btn" id="cartBtn">🛍️<span class="cart-count">0</span></a>
+      <select class="currency-select" id="curSel" title="Currency"></select>
+      <button class="theme-toggle" id="themeToggle" title="Switch to black mode">🌙</button>
+      <button class="profile-btn" id="profileBtn" title="Your profile, cart and orders">👤</button>
+      <button class="cart-btn" id="cartBtn" title="Your cart">🛍️<span class="cart-count">0</span></button>
     </div>
   </div>
 </header>
@@ -106,7 +110,7 @@ document.getElementById('placeBtn').onclick = async () => {
         action: 'order', email: u.email,
         customer_name: name, phone, address: addr,
         delivery_area: document.getElementById('cArea').value,
-        delivery_fee: f, items: c, total_usd: subtotal + f
+        delivery_fee: f, items: c.map(i => ({ id: i.id, name: i.name, priceUSD: i.priceUSD, qty: i.qty })), total_usd: subtotal + f
       }) });
     const j = await r.json();
     if (!j.ok) { alert(j.error || 'Could not place order.'); btn.disabled = false; btn.textContent = 'Place order'; return; }
