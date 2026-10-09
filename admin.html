@@ -78,6 +78,9 @@
           </select>
         </div>
         <div class="f-group"><label>Price (USD)</label><input id="pPrice" type="number" step="0.01" min="0.5" placeholder="24.99"></div>
+        <div class="f-group"><label>Vendor</label><input id="pVendor" type="text" list="vendorList" placeholder="In-house or supplier name"></div>
+        <datalist id="vendorList"></datalist>
+        <div class="f-group"><label>Stock on hand</label><input id="pStock" type="number" min="0" step="1" placeholder="0"></div>
         <div class="f-group"><label>Description</label><textarea id="pDesc" placeholder="Short, lovely description of the piece"></textarea></div>
         <div class="f-group"><label>Product photo</label><input id="pImg" type="file" accept="image/*" style="padding:9px"></div>
         <img class="img-preview" id="imgPrev" alt="preview">
@@ -88,8 +91,13 @@
 
     <div>
       <div class="mini-card">
+        <h3>Vendor stock</h3>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:10px">One row per supplier: what's listed, what's in hand, what needs restocking.</p>
+        <table class="order-table" id="vendorTable"><thead><tr><th>Vendor</th><th>Live / Draft</th><th>Pieces in stock</th><th>Low stock</th><th>Stock value (USD)</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="mini-card">
         <h3>Products</h3>
-        <table class="prod-table" id="prodTable"><thead><tr><th></th><th>Name</th><th>Category</th><th>Price (USD)</th><th></th></tr></thead><tbody></tbody></table>
+        <table class="prod-table" id="prodTable"><thead><tr><th></th><th>Name</th><th>Category</th><th>Vendor</th><th>Stock</th><th>Price (USD)</th><th>Live</th><th></th></tr></thead><tbody></tbody></table>
       </div>
       <div class="mini-card">
         <h3>Orders</h3>
@@ -158,13 +166,15 @@ document.getElementById('saveProd').onclick = async () => {
   const btn = document.getElementById('saveProd'); btn.disabled = true; btn.textContent = 'Publishing…';
   const j = await api({ action: 'saveProduct', product: {
     name, category: document.getElementById('pCat').value, priceUSD: price,
-    description: document.getElementById('pDesc').value.trim(), image: imageData
+    description: document.getElementById('pDesc').value.trim(), image: imageData,
+    vendor: document.getElementById('pVendor').value.trim() || 'In-house',
+    stock_qty: document.getElementById('pStock').value === '' ? 0 : parseInt(document.getElementById('pStock').value)
   }});
   btn.disabled = false; btn.textContent = 'Publish to store';
   if (j.ok) {
     document.getElementById('saveMsg').style.display = 'block';
     setTimeout(() => document.getElementById('saveMsg').style.display = 'none', 2500);
-    ['pName','pPrice','pDesc'].forEach(id => document.getElementById(id).value = '');
+    ['pName','pPrice','pDesc','pVendor','pStock'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('pImg').value = '';
     document.getElementById('imgPrev').style.display = 'none';
     imageData = '';
@@ -210,14 +220,44 @@ function render(j) {
   document.getElementById('statOrders').textContent = j.orders.length;
   document.getElementById('statPending').textContent = j.orders.filter(o => o.status !== 'dispatched' && o.status !== 'delivered').length;
 
-  document.querySelector('#prodTable tbody').innerHTML = j.products.map(p => `
+  document.querySelector('#prodTable tbody').innerHTML = j.products.map(p => {
+    const st = p.stock_qty === undefined || p.stock_qty === null ? 0 : Number(p.stock_qty);
+    const low = st <= 2;
+    return `
     <tr>
-      <td><img src="${p.image}" alt=""></td>
+      <td><img src="${p.image || ''}" alt=""></td>
       <td>${p.name}</td>
       <td>${p.category}</td>
+      <td>${p.vendor || 'In-house'}</td>
+      <td><button class="small-btn" style="${low ? 'color:#a4232b;border-color:#e6b3b6;font-weight:600' : ''}" onclick="editStock('${p.id}',${st})" title="Click to update stock">${st}${low ? ' ⚠' : ''}</button></td>
       <td>$${Number(p.priceUSD).toFixed(2)}</td>
-      <td><button class="small-btn warn" onclick="delProd('${p.id}')">Delete</button></td>
-    </tr>`).join('') || '<tr><td colspan="5" style="color:var(--muted)">No products yet. Add the first one on the left.</td></tr>';
+      <td><span class="status-pill" style="${p.active ? '' : 'opacity:.6'}">${p.active ? 'live' : 'draft'}</span></td>
+      <td>${p.active
+        ? `<button class="small-btn warn" onclick="toggleLive('${p.id}',false)">Hide</button>`
+        : `<button class="small-btn" onclick="toggleLive('${p.id}',true)">Go live →</button>`}
+          <button class="small-btn warn" onclick="delProd('${p.id}')">Delete</button></td>
+    </tr>`;}).join('') || '<tr><td colspan="8" style="color:var(--muted)">No products yet. Add the first one on the left.</td></tr>';
+
+  const byVendor = {};
+  j.products.forEach(p => {
+    const v = p.vendor || 'In-house';
+    const st = p.stock_qty === undefined || p.stock_qty === null ? 0 : Number(p.stock_qty);
+    if (!byVendor[v]) byVendor[v] = { live: 0, draft: 0, stock: 0, low: 0, value: 0 };
+    if (p.active) { byVendor[v].live++; byVendor[v].value += st * Number(p.priceUSD); } else byVendor[v].draft++;
+    byVendor[v].stock += st;
+    if (p.active && st <= 2) byVendor[v].low++;
+  });
+  document.querySelector('#vendorTable tbody').innerHTML = Object.entries(byVendor).sort((a, b) => b[1].value - a[1].value).map(([v, s]) => `
+    <tr>
+      <td><strong>${v}</strong></td>
+      <td>${s.live} live${s.draft ? ` / ${s.draft} draft` : ''}</td>
+      <td>${s.stock}</td>
+      <td>${s.low ? `<span style="color:#a4232b;font-weight:600">${s.low} to restock</span>` : '<span style="color:var(--muted)">—</span>'}</td>
+      <td>$${s.value.toFixed(2)}</td>
+    </tr>`).join('') || '<tr><td colspan="5" style="color:var(--muted)">No stock tracked yet.</td></tr>';
+
+  const seen = [...new Set(j.products.map(p => p.vendor || 'In-house'))];
+  document.getElementById('vendorList').innerHTML = seen.map(v => `<option value="${v}">`).join('');
 
   document.querySelector('#orderTable tbody').innerHTML = j.orders.map(o => {
     const items = JSON.parse(o.items || '[]');
@@ -232,6 +272,17 @@ function render(j) {
   }).join('') || '<tr><td colspan="5" style="color:var(--muted)">No orders yet.</td></tr>';
 }
 
+window.editStock = async (id, cur) => {
+  const v = prompt('Stock on hand for this piece:', cur);
+  if (v === null) return;
+  const n = parseInt(v); if (isNaN(n) || n < 0) { alert('Enter a whole number.'); return; }
+  await api({ action: 'updateStock', id, stock_qty: n });
+  load();
+};
+window.toggleLive = async (id, active) => {
+  await api({ action: 'toggleActive', id, active });
+  load();
+};
 window.delProd = async (id) => {
   if (!confirm('Delete this product from the store?')) return;
   await api({ action: 'deleteProduct', id });
